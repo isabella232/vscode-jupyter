@@ -18,6 +18,7 @@ import { IDisposable, IPathUtils } from '../../../../client/common/types';
 import * as localize from '../../../../client/common/utils/localize';
 import { JupyterSessionManager } from '../../../../client/datascience/jupyter/jupyterSessionManager';
 import { JupyterSessionManagerFactory } from '../../../../client/datascience/jupyter/jupyterSessionManagerFactory';
+import { generatePythonKernelConnection } from '../../../../client/datascience/jupyter/kernels/helpers';
 import { KernelSelectionProvider } from '../../../../client/datascience/jupyter/kernels/kernelSelections';
 import { KernelService } from '../../../../client/datascience/jupyter/kernels/kernelService';
 import { IKernelSpecQuickPickItem } from '../../../../client/datascience/jupyter/kernels/types';
@@ -155,7 +156,7 @@ suite('DataScience - KernelSelections', () => {
         const interpreterService = mock<IInterpreterService>();
         when(interpreterService.getActiveInterpreter(anything())).thenResolve();
         const rawSupportedService = mock<IRawNotebookSupportedService>();
-        when(rawSupportedService.supported()).thenResolve(true);
+        when(rawSupportedService.supported()).thenReturn(true);
         kernelSelectionProvider = new KernelSelectionProvider(
             instance(kernelService),
             instance(interpreterSelector),
@@ -295,12 +296,7 @@ suite('DataScience - KernelSelections', () => {
                 label: item.label,
                 detail: '<user friendly path>',
                 description: '',
-                selection: {
-                    kernelModel: undefined,
-                    interpreter: item.interpreter,
-                    kernelSpec: undefined,
-                    kind: 'startUsingPythonInterpreter'
-                }
+                selection: generatePythonKernelConnection(item.interpreter)
             };
         });
         const expectedList = [...expectedKernelItems, ...expectedInterpreterItems];
@@ -343,12 +339,7 @@ suite('DataScience - KernelSelections', () => {
                 label: item.label,
                 detail: '<user friendly path>',
                 description: '',
-                selection: {
-                    kernelModel: undefined,
-                    interpreter: item.interpreter,
-                    kernelSpec: undefined,
-                    kind: 'startUsingPythonInterpreter'
-                }
+                selection: generatePythonKernelConnection(item.interpreter)
             };
         });
         const expectedList = [...expectedKernelItems, ...expectedInterpreterItems];

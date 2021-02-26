@@ -408,6 +408,7 @@
     "DataScience.fallbackToUseActiveInterpeterAsKernel": "Couldn't find kernel '{0}' that the notebook was created with. Using the current interpreter.",
     "DataScience.fallBackToRegisterAndUseActiveInterpeterAsKernel": "Couldn't find kernel '{0}' that the notebook was created with. Registering a new kernel using the current interpreter.",
     "DataScience.fallBackToPromptToUseActiveInterpreterOrSelectAKernel": "Couldn't find kernel '{0}' that the notebook was created with.",
+    "DataScience.fallBackToRegisterAndUseInterpeterAsKernel": "Couldn't find kernel '{0}'. Registering a new kernel for the interpreter '{1}'.",
     "DataScience.selectKernel": "Select a Kernel",
     "DataScience.selectDifferentKernel": "Select a different Kernel",
     "DataScience.selectDifferentJupyterInterpreter": "Select a different Interpreter",

@@ -14,7 +14,9 @@ import { createDeferredFromPromise } from '../../../common/utils/async';
 import { noop } from '../../../common/utils/misc';
 import { IInterpreterSelector } from '../../../interpreter/configuration/types';
 import { IInterpreterService } from '../../../interpreter/contracts';
+import { getInterpreterHash } from '../../../pythonEnvironments/info/interpreter';
 import { IKernelFinder } from '../../kernel-launcher/types';
+import { doesKernelSpecMatchInterpreter } from '../../notebookStorage/baseModel';
 import { IJupyterSessionManager, IJupyterSessionManagerFactory, IRawNotebookSupportedService } from '../../types';
 import { isPythonKernelConnection } from './helpers';
 import { KernelService } from './kernelService';
@@ -155,8 +157,40 @@ export class KernelSelectionProvider {
                 : Promise.resolve([]);
 
             // eslint-disable-next-line prefer-const
-            let [installedKernels, interpreters] = await Promise.all([installedKernelsPromise, interpretersPromise]);
+            let [installedKernelsWithDuplicates, interpreters] = await Promise.all([
+                installedKernelsPromise,
+                interpretersPromise
+            ]);
 
+            // List of kernel specs that we have registered for interpreters.
+            // Key = Interpreter hash
+            const ourKernelSpecsRegisteredForInterpreters = new Set<string>();
+            // Remove duplicate kernels
+            const installedKernels = installedKernelsWithDuplicates.filter((item) => {
+                // Possible we have a kernel spec named `python3` in a conda environment.
+                // & we start Jupyter from another virtual environment.
+                // The kernel from conda cannot be started from the Jupyter launched from the virtual env.
+                // The solution is to register a kernel spec in the Jupyter for this matching kernel spec in Conda.
+                // Next time you see a list of the kernels, you could have duplicates.
+                // We need to hide one of them.
+                if (item.selection.kernelSpec.metadata?.originalKernelSpec) {
+                    return false;
+                }
+                // If we have 2 kernel specs that we had registered & both point to the same interpreter, then ignore the duplicates.
+                const interpreterPath =
+                    item.selection.kernelSpec.metadata?.interpreter?.path || item.selection.kernelSpec.interpreterPath;
+                if (!interpreterPath) {
+                    return true;
+                }
+                const interpreterHash = getInterpreterHash({ path: interpreterPath });
+                if (!ourKernelSpecsRegisteredForInterpreters.has(interpreterHash)) {
+                    ourKernelSpecsRegisteredForInterpreters.add(interpreterHash);
+                    return true;
+                }
+                // Ok, so we have two kernel specs that point to the same interpreter.
+                // We don't need one of them, just ignore them.
+                return false;
+            });
             interpreters = interpreters
                 .filter((item) => {
                     // If the interpreter is registered as a kernel then don't inlcude it.
@@ -166,6 +200,14 @@ export class KernelSelectionProvider {
                                 return false;
                             }
 
+                            if (
+                                doesKernelSpecMatchInterpreter(
+                                    item.selection.interpreter,
+                                    installedKernel.selection.kernelSpec
+                                )
+                            ) {
+                                return true;
+                            }
                             const kernelDisplayName =
                                 installedKernel.selection.kernelSpec?.display_name ||
                                 installedKernel.selection.kernelSpec?.name ||

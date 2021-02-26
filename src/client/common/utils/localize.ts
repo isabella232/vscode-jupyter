@@ -750,6 +750,10 @@ export namespace DataScience {
         'DataScience.fallBackToRegisterAndUseActiveInterpeterAsKernel',
         "Couldn't find kernel '{0}' that the notebook was created with. Registering a new kernel using the current interpreter."
     );
+    export const fallBackToRegisterAndUseInterpeterAsKernel = localize(
+        'DataScience.fallBackToRegisterAndUseInterpeterAsKernel',
+        "Couldn't find kernel '{0}'. Registering a new kernel for the interpreter '{1}'."
+    );
     export const fallBackToPromptToUseActiveInterpreterOrSelectAKernel = localize(
         'DataScience.fallBackToPromptToUseActiveInterpreterOrSelectAKernel',
         "Couldn't find kernel '{0}' that the notebook was created with."

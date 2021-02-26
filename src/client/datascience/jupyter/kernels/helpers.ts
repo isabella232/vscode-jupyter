@@ -23,6 +23,7 @@ import {
     PythonKernelConnectionMetadata
 } from './types';
 import { Settings } from '../../constants';
+import { generateKernelNameForInterpreter } from './kernelService';
 
 // Helper functions for dealing with kernels and kernelspecs
 
@@ -71,6 +72,16 @@ export function getDisplayNameOrNameOfKernelConnection(
     return displayName || name || interpeterName || defaultKernelName || defaultValue;
 }
 
+export function generatePythonKernelConnection(
+    interpreter: PythonEnvironment,
+    kernelSpec?: IJupyterKernelSpec
+): PythonKernelConnectionMetadata {
+    return {
+        kind: 'startUsingPythonInterpreter',
+        interpreter,
+        kernelSpec: kernelSpec || createDefaultKernelSpec(interpreter)
+    };
+}
 export function getNameOfKernelConnection(
     kernelConnection: KernelConnectionMetadata | undefined,
     defaultValue: string = ''
@@ -153,16 +164,24 @@ export function getLanguageInNotebookMetadata(metadata?: nbformat.INotebookMetad
     }
     return metadata.language_info?.name;
 }
-// Create a default kernelspec with the given display name
+//
+/**
+ * Create a default kernelspec with the given display name
+ * The name of the kernel is predictable (i.e. for a given interpreter it will always return the same name).
+ */
 export function createDefaultKernelSpec(interpreter?: PythonEnvironment): IJupyterKernelSpec {
     // This creates a default kernel spec. When launched, 'python' argument will map to using the interpreter
     // associated with the current resource for launching.
     const defaultSpec: Kernel.ISpecModel = {
-        name: 'python3', // Don't use display name here. It's supposed to match the relative path on disk
+        /**
+         * This name is only used when using non-raw kernels.
+         * In the case of non-raw kernels, we'll register this interpreter as a kernel and use this as the name.
+         */
+        name: interpreter ? generateKernelNameForInterpreter(interpreter) : 'python3',
         language: 'python',
         display_name: interpreter?.displayName || 'Python 3',
         metadata: {},
-        argv: ['python', '-m', 'ipykernel_launcher', '-f', connectionFilePlaceholder],
+        argv: [interpreter?.path || 'python', '-m', 'ipykernel_launcher', '-f', connectionFilePlaceholder],
         env: {},
         resources: {}
     };

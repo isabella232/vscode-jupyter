@@ -11,7 +11,7 @@ import { Telemetry } from '../../../constants';
 import { IKernelFinder } from '../../../kernel-launcher/types';
 import { IRawNotebookSupportedService } from '../../../types';
 import { detectDefaultKernelName, isPythonKernelConnection } from '../helpers';
-import { KernelService } from '../kernelService';
+import { isKernelNameGeneratedByUs, KernelService } from '../kernelService';
 import { IKernelSelectionListProvider, KernelSpecConnectionMetadata, IKernelSpecQuickPickItem } from '../types';
 import { getQuickPickItemForKernelSpec } from './installJupyterKernelProvider';
 
@@ -41,14 +41,8 @@ export class InstalledLocalKernelSelectionListProvider
                         // Check if this is a kernel we registerd in the old days.
                         // If it is, then no need to display that (selecting kernels registered is done by selecting the corresponding interpreter).
                         // Hence we can hide such kernels.
-                        // Kernels we create will end with a uuid (with - stripped), & will have interpreter info in the metadata.
                         // Only do this for raw kernel scenarios
-                        const guidRegEx = /[a-f0-9]{32}$/;
-                        if (
-                            rawNotebookSupported &&
-                            item.metadata?.interpreter &&
-                            item.name.toLowerCase().search(guidRegEx)
-                        ) {
+                        if (rawNotebookSupported && isKernelNameGeneratedByUs(item)) {
                             return false;
                         }
 

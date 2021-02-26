@@ -144,7 +144,7 @@ export interface INotebookServer extends IAsyncDisposable {
 // Provides a service to determine if raw notebook is supported or not
 export const IRawNotebookSupportedService = Symbol('IRawNotebookSupportedService');
 export interface IRawNotebookSupportedService {
-    supported(): Promise<boolean>;
+    supported(): boolean;
 }
 
 // Provides notebooks that talk directly to kernels as opposed to a jupyter server
@@ -251,6 +251,7 @@ export type ConnectNotebookProviderOptions = {
     token?: CancellationToken;
     resource: Resource;
     metadata?: nbformat.INotebookMetadata;
+    kernelConnection?: KernelConnectionMetadata;
     onConnectionMade?(): void; // Optional callback for when the first connection is made
 };
 
@@ -427,7 +428,20 @@ export interface IJupyterKernelSpec {
      * Optionally storing the interpreter information in the metadata (helping extension search for kernels that match an interpereter).
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    readonly metadata?: Record<string, any> & { interpreter?: Partial<PythonEnvironment> };
+    readonly metadata?: Record<string, any> & {
+        /**
+         * The details of the associated Python interpreter.
+         */
+        interpreter?: Partial<PythonEnvironment>;
+        /**
+         * Whether to hide this kernel spec from the list.
+         * If we have a kernel spec from a conda environment, we cannot use that from the Jupyter started from a virtual env.
+         * In such cases, we need to register a new  kernel spec against the jupyter server.
+         * But now we'll have two kernel specs in the list.
+         * The presence of this tells us to hide it.
+         */
+        originalKernelSpec?: string;
+    };
     readonly argv: string[];
     /**
      * Optionally where this kernel spec json is located on the local FS.

@@ -4,7 +4,7 @@
 import * as vscode from 'vscode';
 import { IExtensionSingleActivationService } from '../activation/types';
 import { IPythonExtensionChecker } from '../api/types';
-import { UseCustomEditorApi, UseVSCodeNotebookEditorApi } from '../common/constants';
+import { IsLocalConnection, IsRawSupported, UseCustomEditorApi, UseVSCodeNotebookEditorApi } from '../common/constants';
 import { FileSystemPathUtils } from '../common/platform/fs-paths';
 import { IFileSystemPathUtils } from '../common/platform/types';
 import { IConfigurationService } from '../common/types';
@@ -206,6 +206,9 @@ export function registerTypes(serviceManager: IServiceManager, inNotebookApiExpe
     serviceManager.addSingletonInstance<boolean>(UseCustomEditorApi, usingCustomEditor);
     serviceManager.addSingletonInstance<boolean>(UseVSCodeNotebookEditorApi, useVSCodeNotebookAPI);
     serviceManager.addSingletonInstance<number>(DataScienceStartupTime, Date.now());
+    serviceManager.addSingleton<IRawNotebookSupportedService>(IRawNotebookSupportedService, RawNotebookSupportedService);
+    const rawSupported = serviceManager.get<IRawNotebookSupportedService>(IRawNotebookSupportedService).supported();
+    serviceManager.addSingletonInstance<boolean>(IsRawSupported, rawSupported);
 
     // This will ensure all subsequent telemetry will get the context of whether it is a custom/native/old notebook editor.
     // This is temporary, and once we ship native editor this needs to be removed.
@@ -214,6 +217,10 @@ export function registerTypes(serviceManager: IServiceManager, inNotebookApiExpe
     setSharedProperty('localOrRemoteConnection', isLocalConnection ? 'local' : 'remote');
     const isPythonExtensionInstalled = serviceManager.get<IPythonExtensionChecker>(IPythonExtensionChecker);
     setSharedProperty('isPythonExtensionInstalled', isPythonExtensionInstalled.isPythonExtensionInstalled ? 'true' : 'false');
+    serviceManager.addSingletonInstance<boolean>(IsLocalConnection, isLocalConnection);
+    if (isLocalConnection) {
+        setSharedProperty('rawKernelSupported', rawSupported ? 'true' : 'false');
+    }
 
     // This condition is temporary.
     serviceManager.addSingleton<INotebookEditorProvider>(VSCodeNotebookProvider, NotebookEditorProvider);
@@ -253,7 +260,6 @@ export function registerTypes(serviceManager: IServiceManager, inNotebookApiExpe
     serviceManager.addSingleton<INotebookStorageProvider>(INotebookStorageProvider, NotebookStorageProvider);
     serviceManager.addSingleton<PreferredRemoteKernelIdProvider>(PreferredRemoteKernelIdProvider, PreferredRemoteKernelIdProvider);
     serviceManager.addSingleton<IRawNotebookProvider>(IRawNotebookProvider, RawNotebookProviderWrapper);
-    serviceManager.addSingleton<IRawNotebookSupportedService>(IRawNotebookSupportedService, RawNotebookSupportedService);
     serviceManager.addSingleton<IJupyterNotebookProvider>(IJupyterNotebookProvider, JupyterNotebookProvider);
     serviceManager.add<IPlotViewer>(IPlotViewer, PlotViewer);
     serviceManager.addSingleton<IKernelLauncher>(IKernelLauncher, KernelLauncher);

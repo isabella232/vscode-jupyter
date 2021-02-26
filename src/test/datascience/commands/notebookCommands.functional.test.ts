@@ -15,11 +15,13 @@ import { NotebookProvider } from '../../../client/datascience/interactive-common
 import { InteractiveWindowProvider } from '../../../client/datascience/interactive-window/interactiveWindowProvider';
 import { JupyterNotebookBase } from '../../../client/datascience/jupyter/jupyterNotebook';
 import { JupyterSessionManagerFactory } from '../../../client/datascience/jupyter/jupyterSessionManagerFactory';
+import { generatePythonKernelConnection } from '../../../client/datascience/jupyter/kernels/helpers';
 import { KernelDependencyService } from '../../../client/datascience/jupyter/kernels/kernelDependencyService';
 import { KernelSelectionProvider } from '../../../client/datascience/jupyter/kernels/kernelSelections';
 import { KernelSelector } from '../../../client/datascience/jupyter/kernels/kernelSelector';
 import { KernelService } from '../../../client/datascience/jupyter/kernels/kernelService';
 import { KernelSwitcher } from '../../../client/datascience/jupyter/kernels/kernelSwitcher';
+import { KernelValidator } from '../../../client/datascience/jupyter/kernels/kernelValidator';
 import {
     IKernelSpecQuickPickItem,
     KernelSpecConnectionMetadata,
@@ -84,11 +86,7 @@ suite('DataScience - Notebook Commands', () => {
         },
         {
             label: 'foobaz',
-            selection: {
-                kernelSpec: undefined,
-                interpreter: selectedInterpreter,
-                kind: 'startUsingPythonInterpreter'
-            }
+            selection: generatePythonKernelConnection(selectedInterpreter)
         }
     ];
 

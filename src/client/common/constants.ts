@@ -53,6 +53,8 @@ export function isUnitTestExecution(): boolean {
 
 // Temporary constant, used to indicate whether we're using custom editor api or not.
 export const UseCustomEditorApi = Symbol('USE_CUSTOM_EDITOR');
+export const IsLocalConnection = Symbol('IS_LOCAL_CONNECTION');
+export const IsRawSupported = Symbol('IS_RAW_SUPPORTED');
 export const UseVSCodeNotebookEditorApi = Symbol('USE_NATIVEEDITOR');
 export const UseProposedApi = Symbol('USE_VSC_PROPOSED_API');
 

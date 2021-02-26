@@ -4,35 +4,66 @@
 import { nbformat } from '@jupyterlab/coreutils/lib/nbformat';
 import { KernelMessage } from '@jupyterlab/services';
 import * as fastDeepEqual from 'fast-deep-equal';
-import { sha256 } from 'hash.js';
 import { cloneDeep } from 'lodash';
 import { Event, EventEmitter, Memento, Uri } from 'vscode';
 import { PYTHON_LANGUAGE } from '../../common/constants';
 import { ICryptoUtils } from '../../common/types';
 import { isUntitledFile, noop } from '../../common/utils/misc';
+import { PythonEnvironment } from '../../pythonEnvironments/info';
+import { getInterpreterHash } from '../../pythonEnvironments/info/interpreter';
 import { pruneCell } from '../common';
 import { NotebookModelChange } from '../interactive-common/interactiveWindowTypes';
 import {
-    createDefaultKernelSpec,
     getInterpreterFromKernelConnectionMetadata,
     isPythonKernelConnection,
     kernelConnectionMetadataHasKernelModel
 } from '../jupyter/kernels/helpers';
+import { generateKernelNameForInterpreter } from '../jupyter/kernels/kernelService';
 import { KernelConnectionMetadata } from '../jupyter/kernels/types';
-import { CellState, INotebookModel } from '../types';
+import { CellState, IJupyterKernelSpec, INotebookModel } from '../types';
 import { PreferredRemoteKernelIdProvider } from './preferredRemoteKernelIdProvider';
 
-export function getInterpreterInfoStoredInMetadata(
-    metadata?: nbformat.INotebookMetadata
-): { displayName: string; hash: string } | undefined {
-    if (!metadata || !metadata.kernelspec || !metadata.kernelspec.name) {
-        return;
+export function doesKernelSpecMatchInterpreter(
+    interpreter: PythonEnvironment,
+    kernelspec?: nbformat.IKernelspecMetadata | IJupyterKernelSpec
+): boolean {
+    if (!kernelspec) {
+        return false;
     }
-    // See `updateNotebookMetadata` to determine how & where exactly interpreter hash is stored.
+    // If we don't have either one, then its not a kernel spec we generated for an interpreter.
+    const ourKernelSpec = (kernelspec as unknown) as IJupyterKernelSpec;
+    if (!kernelspec.name && !kernelspec.metadata) {
+        return false;
+    }
+    if (!ourKernelSpec.metadata?.interpreter) {
+        return false;
+    }
+
+    // See `updateKernelSpecInNotebookMetadataToTrackInterpreter` to determine how & where exactly interpreter hash is stored.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const kernelSpecMetadata: undefined | any = metadata.kernelspec.metadata as any;
-    const interpreterHash = kernelSpecMetadata?.interpreter?.hash;
-    return interpreterHash ? { displayName: metadata.kernelspec.name, hash: interpreterHash } : undefined;
+    const interpreterHash = (ourKernelSpec.metadata?.interpreter as any).hash;
+    return (
+        getInterpreterHash(interpreter) === interpreterHash ||
+        ourKernelSpec.metadata.interpreter.path === interpreter.path ||
+        generateKernelNameForInterpreter(interpreter) === interpreterHash
+    );
+}
+
+/**
+ * Updates the kernel spec in notebook metadata to keep track of the interpreter used.
+ * @returns {boolean} `true` if metadata has been updated, else `false`.
+ */
+export function updateKernelSpecInNotebookMetadataToTrackInterpreter(
+    kernelspec: nbformat.IKernelspecMetadata,
+    interpreter: PythonEnvironment
+): boolean {
+    const kernelSpecName = generateKernelNameForInterpreter(interpreter);
+    if (kernelspec.name !== kernelSpecName || kernelspec?.display_name !== interpreter.displayName) {
+        kernelspec.name = kernelSpecName;
+        kernelspec.display_name = interpreter.displayName || kernelSpecName;
+        return true;
+    }
+    return false;
 }
 
 // eslint-disable-next-line complexity
@@ -82,21 +113,11 @@ export function updateNotebookMetadata(
             : kernelConnection?.kernelSpec;
     if (kernelConnection?.kind === 'startUsingPythonInterpreter') {
         // Store interpreter name, we expect the kernel finder will find the corresponding interpreter based on this name.
-        const kernelSpec = kernelConnection.kernelSpec || createDefaultKernelSpec(kernelConnection.interpreter);
-        const displayName = kernelConnection.interpreter.displayName || '';
-        const name = kernelSpec.name;
-        if (metadata.kernelspec?.name !== name || metadata.kernelspec?.display_name !== name) {
-            changed = true;
-            metadata.kernelspec = {
-                name,
-                display_name: displayName,
-                metadata: {
-                    interpreter: {
-                        hash: sha256().update(kernelConnection.interpreter.path).digest('hex')
-                    }
-                }
-            };
-        }
+        metadata.kernelspec = metadata.kernelspec || { display_name: '', name: '' };
+        changed = updateKernelSpecInNotebookMetadataToTrackInterpreter(
+            metadata.kernelspec,
+            kernelConnection.interpreter
+        );
     } else if (kernelSpecOrModel && !metadata.kernelspec) {
         // Add a new spec in this case
         metadata.kernelspec = {

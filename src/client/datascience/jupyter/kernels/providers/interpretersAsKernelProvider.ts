@@ -6,6 +6,7 @@
 import { CancellationToken } from 'vscode';
 import { Resource } from '../../../../common/types';
 import { IInterpreterSelector } from '../../../../interpreter/configuration/types';
+import { generatePythonKernelConnection } from '../helpers';
 import { IKernelSelectionListProvider, PythonKernelConnectionMetadata, IKernelSpecQuickPickItem } from '../types';
 
 /**
@@ -30,12 +31,7 @@ export class InterpreterKernelSelectionListProvider
                       ...item,
                       // We don't want descriptions.
                       description: '',
-                      selection: {
-                          kernelModel: undefined,
-                          interpreter: item.interpreter,
-                          kernelSpec: undefined,
-                          kind: 'startUsingPythonInterpreter'
-                      }
+                      selection: generatePythonKernelConnection(item.interpreter)
                   };
               })
             : [];

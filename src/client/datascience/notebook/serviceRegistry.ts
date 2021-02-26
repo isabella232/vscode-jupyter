@@ -9,6 +9,7 @@ import { IServiceManager } from '../../ioc/types';
 import { GitHubIssueCodeLensProvider } from '../../logging/gitHubIssueCodeLensProvider';
 import { NotebookIPyWidgetCoordinator } from '../ipywidgets/notebookIPyWidgetCoordinator';
 import { KernelProvider } from '../jupyter/kernels/kernelProvider';
+import { KernelValidator } from '../jupyter/kernels/kernelValidator';
 import { IKernelProvider } from '../jupyter/kernels/types';
 import { NotebookContentProvider } from './contentProvider';
 import { CreationOptionService } from './creation/creationOptionsService';
@@ -44,6 +45,7 @@ export function registerTypes(serviceManager: IServiceManager) {
     );
     serviceManager.addSingleton<NotebookIntegration>(NotebookIntegration, NotebookIntegration);
     serviceManager.addSingleton<IKernelProvider>(IKernelProvider, KernelProvider);
+    serviceManager.addSingleton<KernelValidator>(KernelValidator, KernelValidator);
     serviceManager.addSingleton<INotebookKernelProvider>(INotebookKernelProvider, VSCodeKernelPickerProvider);
     serviceManager.addSingleton<IExtensionSingleActivationService>(
         IExtensionSingleActivationService,

@@ -12,7 +12,7 @@ import {
     NotebookKernel as VSCNotebookKernel
 } from 'vscode';
 import { ICommandManager, IVSCodeNotebook } from '../../common/application/types';
-import { PYTHON_LANGUAGE } from '../../common/constants';
+import { IsLocalConnection, PYTHON_LANGUAGE } from '../../common/constants';
 import { IConfigurationService, IDisposableRegistry, IExtensionContext, IExtensions } from '../../common/types';
 import { noop } from '../../common/utils/misc';
 import { StopWatch } from '../../common/utils/stopWatch';
@@ -21,10 +21,9 @@ import { sendNotebookOrKernelLanguageTelemetry } from '../common';
 import { Telemetry } from '../constants';
 import { sendKernelListTelemetry } from '../telemetry/kernelTelemetry';
 import { sendKernelTelemetryEvent, trackKernelResourceInformation } from '../telemetry/telemetry';
-import { areKernelConnectionsEqual, isLocalLaunch } from '../jupyter/kernels/helpers';
+import { areKernelConnectionsEqual } from '../jupyter/kernels/helpers';
 import { KernelSelectionProvider } from '../jupyter/kernels/kernelSelections';
 import { KernelSelector } from '../jupyter/kernels/kernelSelector';
-import { KernelSwitcher } from '../jupyter/kernels/kernelSwitcher';
 import {
     IKernelProvider,
     IKernelSpecQuickPickItem,
@@ -38,7 +37,6 @@ import { PreferredRemoteKernelIdProvider } from '../notebookStorage/preferredRem
 import {
     IJupyterSessionManager,
     IJupyterSessionManagerFactory,
-    INotebook,
     INotebookProvider,
     IRawNotebookSupportedService
 } from '../types';
@@ -57,8 +55,6 @@ export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
         return this._onDidChangeKernels.event;
     }
     private readonly _onDidChangeKernels = new EventEmitter<NotebookDocument | undefined>();
-    private notebookKernelChangeHandled = new WeakSet<INotebook>();
-    private readonly isLocalLaunch: boolean;
     constructor(
         @inject(KernelSelectionProvider) private readonly kernelSelectionProvider: KernelSelectionProvider,
         @inject(KernelSelector) private readonly kernelSelector: KernelSelector,
@@ -66,8 +62,7 @@ export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
         @inject(IVSCodeNotebook) private readonly notebook: IVSCodeNotebook,
         @inject(INotebookStorageProvider) private readonly storageProvider: INotebookStorageProvider,
         @inject(INotebookProvider) private readonly notebookProvider: INotebookProvider,
-        @inject(KernelSwitcher) private readonly kernelSwitcher: KernelSwitcher,
-        @inject(IDisposableRegistry) private readonly disposables: IDisposableRegistry,
+        @inject(IDisposableRegistry) disposables: IDisposableRegistry,
         @inject(IExtensionContext) private readonly context: IExtensionContext,
         @inject(IRawNotebookSupportedService) private readonly rawNotebookSupported: IRawNotebookSupportedService,
         @inject(INotebookKernelResolver) private readonly kernelResolver: INotebookKernelResolver,
@@ -77,10 +72,9 @@ export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
         @inject(PreferredRemoteKernelIdProvider)
         private readonly preferredRemoteKernelIdProvider: PreferredRemoteKernelIdProvider,
         @inject(ICommandManager) private readonly commandManager: ICommandManager,
-        @inject(IExtensions) private readonly extensions: IExtensions
+        @inject(IExtensions) private readonly extensions: IExtensions,
+        @inject(IsLocalConnection) private readonly isLocalLaunch: boolean
     ) {
-        this.isLocalLaunch = isLocalLaunch(this.configuration);
-
         this.kernelSelectionProvider.onDidChangeSelections(
             (e) => {
                 if (e) {
@@ -421,6 +415,9 @@ export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
                 : Telemetry.SelectRemoteJupyterKernel;
             sendKernelTelemetryEvent(document.uri, telemetryEvent);
         }
+
+        trackKernelInNotebookMetadata(document, selectedKernelConnectionMetadata);
+
         // Make this the new kernel (calling this method will associate the new kernel with this Uri).
         // Calling `getOrCreate` will ensure a kernel is created and it is mapped to the Uri provided.
         // This will dispose any existing (older kernels) associated with this notebook.
@@ -435,37 +432,11 @@ export class VSCodeKernelPickerProvider implements INotebookKernelProvider {
             newKernel.start({ disableUI: true, document }).catch(noop);
         }
 
-        // Change kernel and update metadata (this can return `undefined`).
-        // When calling `kernelProvider.getOrCreate` it will attempt to dispose the current kernel.
-        const notebook = await this.notebookProvider.getOrCreateNotebook({
-            resource: document.uri,
-            identity: document.uri,
-            getOnly: true
-        });
-
-        // If we have a notebook, change its kernel now
-        if (notebook) {
-            if (!this.notebookKernelChangeHandled.has(notebook)) {
-                this.notebookKernelChangeHandled.add(notebook);
-                notebook.onKernelChanged(
-                    (e) => {
-                        if (notebook.disposed) {
-                            return;
-                        }
-                        trackKernelInNotebookMetadata(document, e);
-                    },
-                    this,
-                    this.disposables
-                );
-            }
-            // eslint-disable-next-line
-            // TODO: https://github.com/microsoft/vscode-python/issues/13514
-            // We need to handle these exceptions in `siwthKernelWithRetry`.
-            // We shouldn't handle them here, as we're already handling some errors in the `siwthKernelWithRetry` method.
-            // Adding comment here, so we have context for the requirement.
-            this.kernelSwitcher.switchKernelWithRetry(notebook, selectedKernelConnectionMetadata).catch(noop);
-        } else {
-            trackKernelInNotebookMetadata(document, selectedKernelConnectionMetadata);
-        }
+        // // eslint-disable-next-line
+        // // TODO: https://github.com/microsoft/vscode-python/issues/13514
+        // // We need to handle these exceptions in `siwthKernelWithRetry`.
+        // // We shouldn't handle them here, as we're already handling some errors in the `siwthKernelWithRetry` method.
+        // // Adding comment here, so we have context for the requirement.
+        // this.kernelSwitcher.switchKernelWithRetry(notebook, selectedKernelConnectionMetadata).catch(noop);
     }
 }

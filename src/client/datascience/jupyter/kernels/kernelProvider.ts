@@ -21,11 +21,11 @@ import {
     IDataScienceErrorHandler,
     IJupyterServerUriStorage,
     INotebookEditorProvider,
-    INotebookProvider,
-    IRawNotebookSupportedService
+    INotebookProvider
 } from '../../types';
 import { Kernel } from './kernel';
 import { KernelSelector } from './kernelSelector';
+import { KernelValidator } from './kernelValidator';
 import { IKernel, IKernelProvider, IKernelSelectionUsage, KernelOptions } from './types';
 
 @injectable()
@@ -42,10 +42,10 @@ export class KernelProvider implements IKernelProvider {
         @inject(KernelSelector) private readonly kernelSelectionUsage: IKernelSelectionUsage,
         @inject(IApplicationShell) private readonly appShell: IApplicationShell,
         @inject(IVSCodeNotebook) private readonly vscNotebook: IVSCodeNotebook,
-        @inject(IRawNotebookSupportedService) private readonly rawNotebookSupported: IRawNotebookSupportedService,
         @inject(IFileSystem) private readonly fs: IFileSystem,
         @inject(IExtensionContext) private readonly context: IExtensionContext,
-        @inject(IJupyterServerUriStorage) private readonly serverStorage: IJupyterServerUriStorage
+        @inject(IJupyterServerUriStorage) private readonly serverStorage: IJupyterServerUriStorage,
+        @inject(KernelValidator) private readonly kernelValidator: KernelValidator
     ) {
         this.asyncDisposables.push(this);
     }
@@ -94,10 +94,10 @@ export class KernelProvider implements IKernelProvider {
             this.kernelSelectionUsage,
             this.appShell,
             this.vscNotebook,
-            this.rawNotebookSupported,
             this.fs,
             this.context,
-            this.serverStorage
+            this.serverStorage,
+            this.kernelValidator
         );
         this.asyncDisposables.push(kernel);
         this.kernelsByUri.set(uri.toString(), { options, kernel });

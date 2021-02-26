@@ -66,7 +66,14 @@ export type DefaultKernelConnectionMetadata = Readonly<{
  * We will always start this kernel using old Jupyter style (provided we first register this intrepreter as a kernel) or raw.
  */
 export type PythonKernelConnectionMetadata = Readonly<{
-    kernelSpec?: IJupyterKernelSpec;
+    /**
+     * When using raw, we used to generate a kernelspec, now this will be part of the connection (same as when using a real kernel spec).
+     * When using non-raw, this will contain the details of the kernel spec name that will
+     * be registered as a real kernel for the Jupyter Server.
+     * This way, we can register the kernel and we know what the name will be.
+     * I.e. the name of the kernelspec is always predictable & static for a given interpreter.
+     */
+    kernelSpec: IJupyterKernelSpec;
     interpreter: PythonEnvironment;
     kind: 'startUsingPythonInterpreter';
 }>;
